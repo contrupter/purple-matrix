@@ -20,6 +20,7 @@
 #include "matrix-e2e.h"
 
 #include <string.h>
+#include <time.h>
 
 /* json-glib */
 #include <json-glib/json-glib.h>
@@ -113,6 +114,7 @@ static void _sync_complete(MatrixConnectionData *ma, gpointer user_data,
     const gchar *next_batch;
 
     ma->active_sync = NULL;
+    ma->last_sync_timestamp = time(NULL);
 
     if(body == NULL) {
         purple_connection_error_reason(pc, PURPLE_CONNECTION_ERROR_OTHER_ERROR,
@@ -323,4 +325,39 @@ void matrix_connection_reject_invite(struct _PurpleConnection *pc,
     MatrixConnectionData *conn = purple_connection_get_protocol_data(pc);
 
     matrix_api_leave_room(conn, room_id, NULL, NULL, NULL, NULL);
+}
+
+
+void matrix_connection_ensure_liveness(struct _PurpleConnection *pc)
+{
+    const gchar *next_batch;
+    double seconds_since_last_sync;
+    MatrixConnectionData *conn = purple_connection_get_protocol_data(pc);
+
+    if (conn->active_sync == NULL) {
+        return;
+    }
+    seconds_since_last_sync = difftime(time(NULL), conn->last_sync_timestamp);
+
+    if (seconds_since_last_sync < 60.0) {
+        return;
+    }
+
+    if (seconds_since_last_sync > 600.0) {
+        purple_debug_info("matrixprpl",
+                "failed to repair sync loop for %s, shutting down\n",
+                pc->account->username);
+        matrix_api_cancel(conn->active_sync);
+        purple_connection_error_reason(pc,
+            PURPLE_CONNECTION_ERROR_NETWORK_ERROR, "Sync loop got broken");
+        return;
+    }
+
+    purple_debug_info("matrixprpl",
+            "sync failed to respond for %s, restarting\n",
+            pc->account->username);
+    matrix_api_cancel(conn->active_sync);
+    next_batch = purple_account_get_string(pc->account,
+            PRPL_ACCOUNT_OPT_NEXT_BATCH, NULL);
+    _start_next_sync(conn, next_batch, FALSE);
 }

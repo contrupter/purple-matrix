@@ -37,6 +37,8 @@ typedef struct _MatrixConnectionData {
     gchar *user_id;         /* our full user id ("@user:server") */
     gchar *access_token;    /* access token corresponding to our user */
 
+    /* time when the last sync started */
+    time_t last_sync_timestamp;
     /* the active sync request */
     struct _MatrixApiRequestData *active_sync;
     /* All the end-2-end encryption magic */
@@ -78,5 +80,10 @@ void matrix_connection_join_room(struct _PurpleConnection *pc,
  */
 void matrix_connection_reject_invite(struct _PurpleConnection *pc,
         const gchar *room_id);
+
+/**
+ * make sure syncs keep going
+ */
+void matrix_connection_ensure_liveness(struct _PurpleConnection *pc);
 
 #endif

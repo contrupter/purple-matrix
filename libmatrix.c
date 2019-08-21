@@ -244,6 +244,14 @@ static int matrixprpl_chat_send(PurpleConnection *gc, int id,
     return 0;
 }
 
+/**
+ * make sure syncs keep going
+ */
+static void matrixprpl_ensure_liveness(PurpleConnection *pc)
+{
+    matrix_connection_ensure_liveness(pc);
+}
+
 
 /**
  * Get the user_id of a user, given their displayname in a room
@@ -317,7 +325,7 @@ static PurplePluginProtocolInfo prpl_info =
     matrixprpl_chat_leave,                 /* chat_leave */
     NULL,                                  /* chat_whisper */
     matrixprpl_chat_send,                  /* chat_send */
-    NULL,                                  /* keepalive */
+    matrixprpl_ensure_liveness,            /* keepalive */
     NULL,                                  /* register_user */
     NULL,                                  /* get_cb_info */
     NULL,                                  /* get_cb_away */
